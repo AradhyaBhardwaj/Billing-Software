@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 from io import BytesIO
 import qrcode
 import subprocess
+import cv2
 
 class Bill_App:
     def __init__(self, root):
@@ -148,6 +149,9 @@ class Bill_App:
         button_save_bill = Button(button_frame, text="Save Bill", font=("Arial Black", 15), pady=10, bg="#4A90E2", fg="#FFFFFF", command=self.save_bill).grid(row=0, column=2, padx=12)
         button_clear = Button(button_frame, text="Clear Field", font=("Arial Black", 15), pady=10, bg="#4A90E2", fg="#FFFFFF", command=self.clear).grid(row=0, column=3, padx=10, pady=6)
         button_exit = Button(button_frame, text="Exit", font=("Arial Black", 15), pady=10, bg="#4A90E2", fg="#FFFFFF", width=8, command=self.exit1).grid(row=0, column=4, padx=10, pady=6)
+        scan_qr_button = Button(self.root, text="Scan Product", font=("Arial Black", 10), bg="#4CAF50", fg="#FFFFFF", 
+                                command=self.scan_product_qr)
+        scan_qr_button.place(x=1150, y=104, width=110, height=30)  # Adjusted position and size
         self.intro()
 
     def create_tables(self):
@@ -668,6 +672,159 @@ class Bill_App:
                 messagebox.showerror("Error", f"Failed to open Homepage.py: {str(e)}")
             finally:
                 self.root.quit()
+
+    def scan_product_qr(self):
+        """Scan QR code of a product and show a popup to add quantity."""
+        cap = cv2.VideoCapture(0)  # Open the default camera
+        detector = cv2.QRCodeDetector()
+
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    messagebox.showerror("Camera Error", "Failed to access the camera.")
+                    break
+
+                # Detect and decode QR code
+                data, bbox, _ = detector.detectAndDecode(frame)
+                if data:
+                    try:
+                        # Parse the QR code data
+                        lines = data.strip().split("\n")
+                        product_details = {}
+                        for line in lines:
+                            if ": " in line:
+                                key, value = line.split(": ", 1)
+                                product_details[key.strip()] = value.strip()
+
+                        # Fetch product details from the database using the product name
+                        if "Product" in product_details:
+                            product_name = product_details["Product"]
+                            conn = sqlite3.connect("Billing_Software.db")
+                            cursor = conn.cursor()
+                            cursor.execute(
+                                "SELECT category, price, quantity FROM products WHERE name = ?",
+                                (product_name,),
+                            )
+                            db_result = cursor.fetchone()
+                            conn.close()
+
+                            if db_result:
+                                # Populate product details from the database
+                                product_details["Category"] = db_result[0]
+                                product_details["Price"] = str(db_result[1])
+                                product_details["Available Quantity"] = db_result[2]
+                                self.show_product_popup(product_details)
+                            else:
+                                messagebox.showerror("Error", "Product not found in the database.")
+                        else:
+                            messagebox.showerror("Error", "QR Code data is missing the 'Product' field.")
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Invalid QR Code Data: {e}")
+                    break  # Exit the loop after processing the QR code
+
+                # Display the camera feed
+                cv2.imshow("Scan Product QR Code", frame)
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q') or key == 27:  # Press 'q' or 'Esc' to quit the camera popup
+                    break
+
+                # Handle the cross button on the OpenCV window
+                if cv2.getWindowProperty("Scan Product QR Code", cv2.WND_PROP_VISIBLE) < 1:
+                    break
+        finally:
+            cap.release()  # Ensure the camera is released
+            cv2.destroyAllWindows()  # Ensure all OpenCV windows are closed
+
+    def show_product_popup(self, product_details):
+        """Show a visually enhanced popup to add quantity for the scanned product."""
+        try:
+            conn = sqlite3.connect("Billing_Software.db")
+            cursor = conn.cursor()
+
+            # Fetch product details from the database
+            cursor.execute("SELECT quantity FROM products WHERE name = ? AND category = ?", 
+                           (product_details['Product'], product_details['Category'].lower()))
+            result = cursor.fetchone()
+            conn.close()
+
+            if not result:
+                messagebox.showerror("Error", "Product not found in the database.")
+                return
+
+            available_quantity = result[0]
+
+            # Create the popup window
+            popup = Toplevel(self.root)
+            popup.title("Add Product Quantity")
+            popup.geometry("450x400")
+            popup.configure(bg="#F0F0F0")  # Light gray background
+            popup.resizable(False, False)
+
+            # Add a title label
+            Label(popup, text="Product Details", font=("Arial Black", 16), bg="#4CAF50", fg="#FFFFFF", pady=10).pack(fill=X)
+
+            # Add product details in a frame for better alignment
+            details_frame = Frame(popup, bg="#F0F0F0", pady=10)
+            details_frame.pack(fill=X, padx=20)
+
+            Label(details_frame, text="Product:", font=("Arial", 12, "bold"), bg="#F0F0F0", fg="#333333").grid(row=0, column=0, sticky="w", pady=5)
+            Label(details_frame, text=product_details['Product'], font=("Arial", 12), bg="#F0F0F0", fg="#333333").grid(row=0, column=1, sticky="w", pady=5)
+
+            Label(details_frame, text="Category:", font=("Arial", 12, "bold"), bg="#F0F0F0", fg="#333333").grid(row=1, column=0, sticky="w", pady=5)
+            Label(details_frame, text=product_details['Category'], font=("Arial", 12), bg="#F0F0F0", fg="#333333").grid(row=1, column=1, sticky="w", pady=5)
+
+            Label(details_frame, text="Price:", font=("Arial", 12, "bold"), bg="#F0F0F0", fg="#333333").grid(row=2, column=0, sticky="w", pady=5)
+            Label(details_frame, text=f"₹{product_details['Price']}", font=("Arial", 12), bg="#F0F0F0", fg="#333333").grid(row=2, column=1, sticky="w", pady=5)
+
+            Label(details_frame, text="Available Quantity:", font=("Arial", 12, "bold"), bg="#F0F0F0", fg="#333333").grid(row=3, column=0, sticky="w", pady=5)
+            Label(details_frame, text=available_quantity, font=("Arial", 12), bg="#F0F0F0", fg="#333333").grid(row=3, column=1, sticky="w", pady=5)
+
+            # Add a separator
+            Frame(popup, height=2, bd=1, relief=SUNKEN, bg="#CCCCCC").pack(fill=X, padx=20, pady=10)
+
+            # Add quantity input section
+            Label(popup, text="Enter Quantity:", font=("Arial", 12, "bold"), bg="#F0F0F0", fg="#333333").pack(pady=10)
+            quantity_var = IntVar(value=1)
+            quantity_entry = Entry(popup, textvariable=quantity_var, font=("Arial", 12), width=10, bg="#FFFFFF", justify="center")
+            quantity_entry.pack(pady=5)
+
+            # Add buttons
+            button_frame = Frame(popup, bg="#F0F0F0", pady=10)
+            button_frame.pack(fill=X, padx=20)
+
+            def add_quantity():
+                try:
+                    quantity = quantity_var.get()
+                    if quantity <= 0:
+                        raise ValueError("Quantity must be greater than 0.")
+                    if quantity > available_quantity:
+                        raise ValueError(f"Only {available_quantity} units are available.")
+
+                    category = product_details['Category'].lower()
+                    product_name = product_details['Product']
+
+                    # Add quantity to the respective category
+                    if category == "snacks" and product_name in self.snacks_items:
+                        self.snacks_items[product_name].set(self.snacks_items[product_name].get() + quantity)
+                    elif category == "grocery" and product_name in self.grocery_items:
+                        self.grocery_items[product_name].set(self.grocery_items[product_name].get() + quantity)
+                    elif category in ["hygiene", "beauty & hygiene"] and product_name in self.hygiene_items:
+                        self.hygiene_items[product_name].set(self.hygiene_items[product_name].get() + quantity)
+                    else:
+                        messagebox.showerror("Error", "Product not found in the inventory.")
+                        return
+
+                    messagebox.showinfo("Success", f"Added {quantity} units of {product_name} to the cart.")
+                    popup.destroy()
+                except ValueError as e:
+                    messagebox.showerror("Error", str(e), parent=popup)
+
+            Button(button_frame, text="Add", font=("Arial Black", 12), bg="#4CAF50", fg="#FFFFFF", command=add_quantity).pack(side=LEFT, padx=10)
+            Button(button_frame, text="Cancel", font=("Arial Black", 12), bg="#F44336", fg="#FFFFFF", command=popup.destroy).pack(side=LEFT, padx=10)
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"Error fetching product details: {e}")
 
 if __name__ == "__main__":
     try:

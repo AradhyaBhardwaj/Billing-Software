@@ -227,7 +227,7 @@ class Dashboard(Toplevel):
     def fetch_data(self):
         """Fetch and process data for the dashboard."""
         try:
-            conn = sqlite3.connect("Billing_Software.db")
+            conn = sqlite3.connect(self.db_path)  # Use self.db_path for flexibility
             today = pd.Timestamp.now().strftime("%Y-%m-%d")
             
             # Default to the last 7 days if no start or end date is provided
@@ -249,6 +249,7 @@ class Dashboard(Toplevel):
             WHERE date BETWEEN ? AND ?
             GROUP BY month"""
             self.df_monthly = pd.read_sql_query(query_monthly, conn, params=(start_date, end_date))
+
             self.df_monthly['month'] = pd.to_datetime(self.df_monthly['month'])
             self.df_monthly.set_index('month', inplace=True)
 
@@ -263,6 +264,7 @@ class Dashboard(Toplevel):
             WHERE date BETWEEN ? AND ?
             GROUP BY date"""
             self.df_daily = pd.read_sql_query(query_daily, conn, params=(start_date, end_date))
+
             self.df_daily['date'] = pd.to_datetime(self.df_daily['date'])
             self.df_daily.set_index('date', inplace=True)
 

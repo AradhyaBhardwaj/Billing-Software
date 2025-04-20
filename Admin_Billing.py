@@ -317,7 +317,7 @@ class Admin_Billing:
                     params = [f"{start_date} 00:00:00"]
                 elif end_date:
                     query = "SELECT date, action_type, category, product_name, price FROM activities WHERE date <= ? ORDER BY date DESC"
-                    params = [f"{end_date} 23:59:59"]
+                    params = [f"{end_date} 23:59:59"] 
 
             try:
                 self.conn = sqlite3.connect("Billing_Software.db")
@@ -530,6 +530,7 @@ class Admin_Billing:
                 self.cursor.execute("SELECT * FROM bills WHERE bill_no = ?", (bill_no,))
                 bill_data = self.cursor.fetchone()
                 if bill_data:
+                    # Display bill details in a popup tied to the "Recent Bills" window
                     date_str = bill_data[2]
                     try:
                         date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
@@ -552,7 +553,7 @@ class Admin_Billing:
 
                     messagebox.showinfo("Bill Details", bill_details, parent=bills_window)
                 else:
-                    messagebox.showerror("Error", "Bill Not Found", parent=bills_window)
+                    messagebox.showerror("Error", f"Bill Number {bill_no} Not Found", parent=bills_window)
             except sqlite3.Error as e:
                 messagebox.showerror("Database Error", f"Error fetching bill details: {e}", parent=bills_window)
             finally:
@@ -604,55 +605,198 @@ class Admin_Billing:
         Button(bills_window, text="View Details", font=("Arial Black", 10), bg="#4CAF50", fg="#FFFFFF", 
                command=view_bill_details).pack(side=LEFT, padx=10, pady=10)
         Button(bills_window, text="Scan QR Code", font=("Arial Black", 10), bg="#FF9800", fg="#FFFFFF", 
-               command=self.scan_qr_code).pack(side=LEFT, padx=10, pady=10)
+               command=lambda: self.scan_qr_code(bills_window)).pack(side=LEFT, padx=10, pady=10)
         Button(bills_window, text="Close", font=("Arial Black", 10), bg="#F44336", fg="#FFFFFF", 
                command=bills_window.destroy).pack(side=RIGHT, padx=10, pady=10)
 
-    def scan_qr_code(self):
+    def scan_qr_code(self, parent_window):
         """Scan QR code using the camera and extract the bill number."""
         cap = cv2.VideoCapture(0)  # Open the default camera
         detector = cv2.QRCodeDetector()
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                messagebox.showerror("Camera Error", "Failed to access the camera.")
-                cap.release()
-                cv2.destroyAllWindows()
-                break
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    messagebox.showerror("Camera Error", "Failed to access the camera.")
+                    break
 
-            # Detect and decode QR code
-            data, bbox, _ = detector.detectAndDecode(frame)
-            if data:
-                cap.release()
-                cv2.destroyAllWindows()
-                self.search_bill_by_qr(data)  # Fetch and display bill details
-                break  # Exit the loop after processing the QR code
+                # Detect and decode QR code
+                data, bbox, _ = detector.detectAndDecode(frame)
+                if data:
+                    # Parse the QR code data
+                    try:
+                        # Split the data into lines and extract relevant fields
+                        lines = data.strip().split("\n")
+                        bill_details = {}
+                        for line in lines:
+                            if ": " in line:
+                                key, value = line.split(": ", 1)
+                                bill_details[key.strip()] = value.strip()
 
-            # Display the camera feed
-            cv2.imshow("Scan QR Code", frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q') or key == 27:  # Press 'q' or 'Esc' to quit the camera popup
-                cap.release()
-                cv2.destroyAllWindows()
-                break  # Exit the loop when quitting
+                        # Ensure all required fields are present
+                        required_fields = ["Bill Number", "Customer Name", "Phone", "Date", "Total Amount"]
+                        if all(field in bill_details for field in required_fields):
+                            # Display the parsed data in a popup
+                            popup_message = (
+                                f"Bill Number: {bill_details['Bill Number']}\n"
+                                f"Date: {bill_details['Date']}\n"
+                                f"Customer Name: {bill_details['Customer Name']}\n"
+                                f"Phone: {bill_details['Phone']}\n"
+                                f"------------------------------------\n"
+                                f"Total Amount: {bill_details['Total Amount']}\n"
+                                f"------------------------------------\n"
+                                f"Thank you for shopping with us!\n\tVisit Again!!"
+                            )
+                            messagebox.showinfo("Bill Details", popup_message, parent=parent_window)
+                        else:
+                            messagebox.showerror("Error", "QR Code Data is missing required fields.", parent=parent_window)
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Invalid QR Code Data: {e}", parent=parent_window)
+                    break  # Exit the loop after processing the QR code
+
+                # Display the camera feed
+                cv2.imshow("Scan QR Code", frame)
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q') or key == 27:  # Press 'q' or 'Esc' to quit the camera popup
+                    break  # Exit the loop when quitting
+
+                # Handle the cross button on the OpenCV window
+                if cv2.getWindowProperty("Scan QR Code", cv2.WND_PROP_VISIBLE) < 1:
+                    break  # Exit the loop if the window is closed
+        finally:
+            cap.release()  # Ensure the camera is released
+            cv2.destroyAllWindows()  # Ensure all OpenCV windows are closed
+
+    def display_detailed_bill_popup(self, bill_no, parent_window):
+        """Fetch bill details using the bill number and display them in a detailed popup.""" 
+        try:
+            self.conn = sqlite3.connect("Billing_Software.db")
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("SELECT * FROM bills WHERE bill_no = ?", (bill_no,))
+            bill_data = self.cursor.fetchone()
+            if bill_data:
+                # Create a popup window for displaying bill details
+                bill_window = Toplevel(parent_window)
+                bill_window.title(f"Bill Details - #{bill_data[1]}")
+                bill_window.geometry("500x500")
+                bill_window.configure(bg="#FFFFFF")
+                bill_window.resizable(False, False)
+
+                # Format the date
+                date_str = bill_data[2]
+                try:
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                    formatted_date = date_obj.strftime('%d/%m/%Y %H:%M:%S')
+                except ValueError:
+                    formatted_date = date_str
+
+                # Header
+                Label(bill_window, text="Bill Details", font=("Arial Black", 16), bg="#FFFFFF", fg="#333333").pack(pady=10)
+
+                # Bill Information
+                info_frame = Frame(bill_window, bg="#FFFFFF")
+                info_frame.pack(pady=10, padx=20, fill=X)
+
+                Label(info_frame, text=f"Bill Number: {bill_data[1]}", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+                Label(info_frame, text=f"Date: {formatted_date}", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+                Label(info_frame, text=f"Customer Name: {bill_data[3]}", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+                Label(info_frame, text=f"Phone: {bill_data[4]}", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+
+                # Separator
+                Label(bill_window, text="------------------------------------", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+
+                # Price Details
+                price_frame = Frame(bill_window, bg="#FFFFFF")
+                price_frame.pack(pady=10, padx=20, fill=X)
+
+                Label(price_frame, text=f"Total Snacks Price: {bill_data[5]} Rs", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+                Label(price_frame, text=f"Total Grocery Price: {bill_data[6]} Rs", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+                Label(price_frame, text=f"Total Hygiene Price: {bill_data[7]} Rs", font=("Arial", 12), bg="#FFFFFF", fg="#333333", anchor="w").pack(fill=X, pady=2)
+
+                # Separator
+                Label(bill_window, text="------------------------------------", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+
+                # Total Amount
+                Label(bill_window, text=f"Total Bill Amount: {bill_data[8]} Rs", font=("Arial Black", 14), bg="#FFFFFF", fg="#333333").pack(pady=10)
+
+                # Footer
+                Label(bill_window, text="Thank you for shopping with us!\nVisit Again!!", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=10)
+
+                # Close Button
+                Button(bill_window, text="Close", font=("Arial Black", 10), bg="#F44336", fg="#FFFFFF", 
+                       command=bill_window.destroy).pack(pady=10)
+            else:
+                messagebox.showerror("Error", f"Bill Number {bill_no} Not Found", parent=parent_window)
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"Error fetching bill details: {e}", parent=parent_window)
+        finally:
+            self.conn.close()
+
+    def display_bill_popup(self, bill_no):
+        """Fetch bill details using the bill number and display them in a popup.""" 
+        try:
+            self.conn = sqlite3.connect("Billing_Software.db")
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("SELECT * FROM bills WHERE bill_no = ?", (bill_no,))
+            bill_data = self.cursor.fetchone()
+            if bill_data:
+                # Create a popup window for displaying bill details
+                bill_window = Toplevel(self.root)
+                bill_window.title("Bill Details")
+                bill_window.geometry("400x400")
+                bill_window.configure(bg="#FFFFFF")
+                bill_window.resizable(False, False)
+
+                # Format the date
+                date_str = bill_data[2]  # Ensure this matches the 'date' column in the database
+                try:
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                    formatted_date = date_obj.strftime('%d/%m/%Y %H:%M:%S')
+                except ValueError:
+                    formatted_date = date_str
+
+                # Display bill details in a structured format
+                Label(bill_window, text=f"Bill Number: {bill_data[1]}", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Date: {formatted_date}", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Customer Name: {bill_data[3]}", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Phone: {bill_data[4]}", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text="------------------------------------", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Total Snacks Price: {bill_data[5]:.2f} Rs", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Total Grocery Price: {bill_data[6]:.2f} Rs", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Total Hygiene Price: {bill_data[7]:.2f} Rs", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text="------------------------------------", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=5)
+                Label(bill_window, text=f"Total Bill Amount: {bill_data[8]:.2f} Rs", font=("Arial Black", 14), bg="#FFFFFF", fg="#333333").pack(pady=10)
+                Label(bill_window, text="Thank you for shopping with us!\nVisit Again!!", font=("Arial", 12), bg="#FFFFFF", fg="#333333").pack(pady=10)
+
+                # Close button
+                Button(bill_window, text="Close", font=("Arial Black", 10), bg="#F44336", fg="#FFFFFF", 
+                       command=bill_window.destroy).pack(pady=10)
+            else:
+                messagebox.showerror("Error", f"Bill Number {bill_no} Not Found", parent=self.root)
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"Error fetching bill details: {e}", parent=self.root)
+        finally:
+            self.conn.close()
 
     def search_bill_by_qr(self, qr_data):
-        """Search for a bill using the QR code data and display its details."""
+        """Search for a bill using the QR code data and display its details.""" 
         try:
             conn = sqlite3.connect("Billing_Software.db")
             cursor = conn.cursor()
+
+            # Ensure the QR data is treated as a string and matches the bill_no
             query = "SELECT * FROM bills WHERE bill_no = ?"
             cursor.execute(query, (qr_data,))
             bill_data = cursor.fetchone()
 
             if bill_data:
-                # Display bill details
+                # Display bill details in a popup
                 self.display_bill_details(bill_data)
             else:
-                messagebox.showerror("Error", "Bill Not Found")
+                messagebox.showerror("Error", "Bill Not Found", parent=self.root)
         except sqlite3.Error as e:
-            messagebox.showerror("Database Error", f"Error searching for the bill: {e}")
+            messagebox.showerror("Database Error", f"Error searching for the bill: {e}", parent=self.root)
         finally:
             conn.close()
 
