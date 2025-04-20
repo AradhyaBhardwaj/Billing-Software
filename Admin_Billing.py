@@ -10,7 +10,7 @@ from fpdf import FPDF
 from tkcalendar import Calendar  
 import qrcode
 from io import BytesIO
-import cv2  # Add OpenCV for camera access
+import cv2  
 
 class Admin_Billing:
     def __init__(self, root):
@@ -80,13 +80,28 @@ class Admin_Billing:
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to open Homepage.py: {str(e)}")
             finally:
-                self.root.destroy()  # Ensure the application quits properly
+                self.root.destroy()  # Clean up the GUI
+                os._exit(0)  # Forcefully terminate the current process
 
     def setup_database(self):
         """Set up the database and create necessary tables."""
         try:
             self.conn = sqlite3.connect("Billing_Software.db")
             self.cursor = self.conn.cursor()
+
+            # Create admin table for login credentials
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS admin (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    password TEXT NOT NULL
+                )
+            """)
+
+            # Insert default admin credentials if not already present
+            self.cursor.execute("""
+                INSERT OR IGNORE INTO admin (username, password) VALUES ('admin', 'admin123')
+            """)
 
             # Create products table with the correct schema
             self.cursor.execute("""
@@ -632,6 +647,7 @@ class Admin_Billing:
                         for line in lines:
                             if ": " in line:
                                 key, value = line.split(": ", 1)
+
                                 bill_details[key.strip()] = value.strip()
 
                         # Ensure all required fields are present
@@ -1189,7 +1205,7 @@ class Admin_Billing:
         Button(button_frame, text="Cancel", font=("Arial Black", 12), bg="#E74C3C", fg="#FFFFFF", width=12, command=handle_cancel).pack(side=LEFT, padx=10)
 
     def go_to_home(self):
-        """Redirect to Homepage.py."""
+        """Redirect to the homepage instantly."""
         try:
             # Redirect to Homepage.py using the current Python interpreter
             subprocess.Popen([sys.executable, "Homepage.py"], shell=False)
@@ -1198,8 +1214,9 @@ class Admin_Billing:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open Homepage.py: {str(e)}")
         finally:
-            self.root.quit()
-            
+            self.root.destroy()  # Clean up the GUI
+            os._exit(0)  # Forcefully terminate the current process
+
     def item_summary(self):
         # Functionality for the "item summary" button
         try:

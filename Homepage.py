@@ -322,20 +322,31 @@ class ModernHomePage:
         window.geometry(f'{width}x{height}+{x}+{y}')
 
     def open_admin_panel(self):
-        """Open the Admin Panel file in fullscreen mode."""
+        """Open the Admin Panel file after authentication."""
         db_path = "Billing_Software.db"
         if not os.path.exists(db_path):
             messagebox.showerror("Error", f"Database file is missing at: {db_path}")
             return
         try:
-            admin_panel_path = self.file_paths['admin_panel']
-            if os.path.exists(admin_panel_path):
-                print(f"Opening Admin Panel at: {admin_panel_path}")  # Debug
-                self.animation_running = False
-                self.root.destroy()
-                subprocess.run([sys.executable, admin_panel_path], check=True)
+            login_path = "login.py"
+            if os.path.exists(login_path):
+                print(f"Opening Login Panel at: {login_path}")  # Debug
+                login_result = subprocess.run([sys.executable, login_path], check=True)
+                
+                # Check if login was successful
+                if login_result.returncode == 0:  # Assuming 0 indicates success
+                    admin_panel_path = self.file_paths['admin_panel']
+                    if os.path.exists(admin_panel_path):
+                        print(f"Opening Admin Panel at: {admin_panel_path}")  # Debug
+                        self.animation_running = False
+                        self.root.destroy()
+                        subprocess.run([sys.executable, admin_panel_path], check=True)
+                    else:
+                        messagebox.showerror("Error", f"Admin Panel file not found at:\n{admin_panel_path}")
+                else:
+                    messagebox.showerror("Error", "Authentication failed. Access denied.")
             else:
-                messagebox.showerror("Error", f"Admin Panel file not found at:\n{admin_panel_path}")
+                messagebox.showerror("Error", f"Login file not found at:\n{login_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open admin panel:\n{str(e)}")
 
