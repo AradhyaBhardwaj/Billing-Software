@@ -49,13 +49,7 @@ class Login:
             cursor.execute("SELECT * FROM admin WHERE username = ? AND password = ?", (username, password))
             admin = cursor.fetchone()
             conn.close()
-
-            if admin:
-                messagebox.showinfo("Success", "Login successful!", parent=self.root)
-                self.root.destroy()
-                subprocess.Popen([sys.executable, "Admin_Billing.py"], shell=False)
-            else:
-                messagebox.showerror("Error", "Invalid username or password!", parent=self.root)
+            messagebox.showerror("Error", "Invalid username or password!", parent=self.root)
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", f"Error connecting to the database: {e}", parent=self.root)
 
