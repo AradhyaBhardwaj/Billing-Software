@@ -664,7 +664,7 @@ class Bill_App:
         choice = messagebox.askyesno("Exit", "Do you really want to exit?")
         if choice:
             try:
-                homepage_path = "Homepage.py"  # Removed resource_path usage
+                homepage_path = "Homepage.py"  
                 subprocess.Popen([sys.executable, homepage_path], shell=False)
             except FileNotFoundError:
                 messagebox.showerror("Error", "Homepage.py not found in the specified directory!")
