@@ -11,6 +11,9 @@ class Login:
         self.root.geometry("500x400")
         self.root.configure(bg="#2C3E50")  # Dark Blue background
 
+        # Bind window close event
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         # Title Frame
         title_frame = Frame(self.root, bg="#34495E", bd=5, relief=RIDGE)
         title_frame.pack(fill=X)
@@ -58,6 +61,10 @@ class Login:
                 messagebox.showerror("Error", "Invalid username or password!", parent=self.root)
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", f"Error connecting to the database: {e}", parent=self.root)
+
+    def on_closing(self):
+        self.root.destroy()
+        subprocess.Popen([sys.executable, "homepage.py"], shell=False)
 
 if __name__ == "__main__":
     root = Tk()
