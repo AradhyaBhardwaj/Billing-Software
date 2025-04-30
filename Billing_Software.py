@@ -48,10 +48,26 @@ class Bill_App:
         details = LabelFrame(self.root, text="Customer Details", font=("Arial Black", 12), bg="#FFFFFF", fg="#333333", relief=GROOVE, bd=10)
         details.place(x=0, y=80, relwidth=1)
         cust_name = Label(details, text="Customer Name", font=("Arial Black", 14), bg="#FFFFFF", fg="#333333").grid(row=0, column=0, padx=15)
-        cust_entry = Entry(details, borderwidth=4, width=30, textvariable=self.c_name, bg="#ECECEC").grid(row=0, column=1, padx=8)
         contact_name = Label(details, text="Contact No.", font=("Arial Black", 14), bg="#FFFFFF", fg="#333333").grid(row=0, column=2, padx=10)
-        contact_entry = Entry(details, borderwidth=4, width=30, textvariable=self.phone, bg="#ECECEC").grid(row=0, column=3, padx=8)
         bill_name = Label(details, text="Bill.No.", font=("Arial Black", 14), bg="#FFFFFF", fg="#333333").grid(row=0, column=4, padx=10)
+
+        def validate_mobile_number(P):
+            """Validate mobile number: must start with 6, 7, 8, or 9 and be 10 digits long."""
+            if P == "" or (P.isdigit() and len(P) <= 10 and P[0] in "6789"):
+                return True
+            return False
+
+        def validate_customer_name(P):
+            """Validate customer name: must be up to 12 characters long."""
+            if len(P) <= 12:
+                return True
+            return False
+
+        vcmd_mobile = (self.root.register(validate_mobile_number), "%P")
+        vcmd_name = (self.root.register(validate_customer_name), "%P")
+
+        cust_entry = Entry(details, borderwidth=4, width=30, textvariable=self.c_name, bg="#ECECEC", validate="key", validatecommand=vcmd_name).grid(row=0, column=1, padx=8)
+        contact_entry = Entry(details, borderwidth=4, width=30, textvariable=self.phone, bg="#ECECEC", validate="key", validatecommand=vcmd_mobile).grid(row=0, column=3, padx=8)
         bill_entry = Entry(details, borderwidth=4, width=30, textvariable=self.bill_no, bg="#ECECEC").grid(row=0, column=5, padx=8)
 
         # Snacks Section

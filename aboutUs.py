@@ -98,21 +98,21 @@ class AboutPage:
         Welcome to our Premium Billing System - your ultimate 
         solution for efficient retail management!
         
-        Our application specializes in handling a wide range 
-        of products including:
-        - Grocery items
-        - Snacks & Beverages
-        - Beauty & Personal Care
+        Our application is designed to revolutionize the way you manage 
+        your retail operations. With a focus on efficiency and accuracy, 
+        our Premium Billing System offers:
+        - Comprehensive product management for Grocery, Snacks, Beverages, 
+          and Personal Care items.
+        - Real-time inventory tracking to ensure you never run out of stock.
+        - Advanced billing features for seamless and error-free transactions.
+        - Detailed analytics and reporting to help you make informed business decisions.
         
-        Streamline your retail business with our advanced 
-        billing software! Effortlessly manage product inventory, 
-        generate accurate bills, and stay worry-free with real-time 
-        stock updates. Simplify operations, save time, and focus 
-        on growing your business with seamless inventory control 
-        and billing precision.
+        Whether you're a small retailer or a large enterprise, our software 
+        is tailored to meet your needs. Simplify your operations, save time, 
+        and enhance customer satisfaction with our all-in-one billing solution.
         
         Version: 1.0
-        Developed for Retailers
+        Developed for Retailers and Administrators
         """
         
         tk.Label(desc_frame, text=description, font=('Segoe UI', 11), 
