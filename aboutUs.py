@@ -104,12 +104,15 @@ class AboutPage:
         - Snacks & Beverages
         - Beauty & Personal Care
         
-        With competitive pricing and robust features, we help 
-        businesses of all sizes streamline their operations 
-        and enhance customer experience.
+        Streamline your retail business with our advanced 
+        billing software! Effortlessly manage product inventory, 
+        generate accurate bills, and stay worry-free with real-time 
+        stock updates. Simplify operations, save time, and focus 
+        on growing your business with seamless inventory control 
+        and billing precision.
         
-        Version: 2.0 Pro
-        Developed with ❤️ for retailers
+        Version: 1.0
+        Developed for Retailers
         """
         
         tk.Label(desc_frame, text=description, font=('Segoe UI', 11), 
