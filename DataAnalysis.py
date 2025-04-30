@@ -96,8 +96,16 @@ class Dashboard(Toplevel):
             # Validate date format
             pd.to_datetime(start_date, format="%Y-%m-%d")
             pd.to_datetime(end_date, format="%Y-%m-%d")
-            self.fetch_data()  # Fetch data for the selected date range
-            self.add_charts()  # Redraw charts with the filtered data
+            
+            # Fetch data for the selected date range
+            self.fetch_data()
+            
+            # Clear existing charts
+            for widget in self.chart_frame.winfo_children():
+                widget.destroy()
+            
+            # Redraw charts with the filtered data
+            self.add_charts()
         except ValueError:
             self.show_popup("Error", "Invalid date format. Please use YYYY-MM-DD.")
 
@@ -137,7 +145,8 @@ class Dashboard(Toplevel):
         last_7_days = self.df_daily.tail(7)
 
         # Add the 4 main charts in a 2x2 grid
-        self.create_chart(main_charts_frame, self.create_line_chart, "Monthly Sales Trend", self.df_monthly.index.strftime('%Y-%m'), self.df_monthly['total_all_bill'], 0, 0)
+        self.create_chart(main_charts_frame, self.create_line_chart, "Monthly Sales Trend (Last 12 Months)", 
+                          self.df_monthly.index.strftime('%Y-%m'), self.df_monthly['total_all_bill'], 0, 0)
         self.create_chart(main_charts_frame, self.create_daily_sales_bar_chart, "Last 7 Days Total Sales", last_7_days.index.strftime('%Y-%m-%d'), last_7_days['total_all_bill'], 0, 1)
         self.create_chart(main_charts_frame, self.create_category_bar_chart, "Category-wise Monthly Sales", self.df_monthly.index.strftime('%Y-%m'), self.df_monthly, 1, 0)
         self.create_chart(main_charts_frame, self.create_category_bar_chart, "Category-wise Daily Sales", last_7_days.index.strftime('%Y-%m-%d'), last_7_days, 1, 1)
@@ -230,15 +239,15 @@ class Dashboard(Toplevel):
             conn = sqlite3.connect(self.db_path)  # Use self.db_path for flexibility
             today = pd.Timestamp.now().strftime("%Y-%m-%d")
             
-            # Default to the last 7 days if no start or end date is provided
+            # Default to the last 12 months if no start or end date is provided
             if not self.start_date.get() and not self.end_date.get():
                 end_date = today
-                start_date = (pd.Timestamp.now() - pd.Timedelta(days=6)).strftime("%Y-%m-%d")
+                start_date = (pd.Timestamp.now() - pd.DateOffset(months=12)).strftime("%Y-%m-%d")
             else:
                 start_date = self.start_date.get() or today
                 end_date = self.end_date.get() or today
 
-            # Query for monthly sales
+            # Query for monthly sales (up to 12 months)
             query_monthly = """
             SELECT strftime('%Y-%m', date) AS month, 
                    SUM(total_snacks_price) AS total_snacks_price,
@@ -247,7 +256,8 @@ class Dashboard(Toplevel):
                    SUM(total_snacks_price + total_grocery_price + total_hygiene_price) AS total_all_bill
             FROM bills
             WHERE date BETWEEN ? AND ?
-            GROUP BY month"""
+            GROUP BY month
+            ORDER BY month"""
             self.df_monthly = pd.read_sql_query(query_monthly, conn, params=(start_date, end_date))
 
             self.df_monthly['month'] = pd.to_datetime(self.df_monthly['month'])
