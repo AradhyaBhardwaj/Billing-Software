@@ -26,12 +26,15 @@ of products including:
 - Snacks & Beverages
 - Beauty & Personal Care
 
-With competitive pricing and robust features, we help 
-businesses of all sizes streamline their operations 
-and enhance customer experience.
+Streamline your retail business with our advanced 
+billing software! Effortlessly manage product inventory, 
+generate accurate bills, and stay worry-free with 
+real-time stock updates. Simplify operations, save time, 
+and focus on growing your business with seamless inventory 
+control and billing precision.
 
-Version: 2.0 Pro
-Developed with ❤️ for retailers""",
+Version: 1.0
+Tailored for small and medium-sized enterprises""",
             "features": [
                 {"icon": "🛒", "title": "Wide Product Range", 
                  "desc": "Thousands of grocery, snacks & beauty products"},
@@ -42,7 +45,7 @@ Developed with ❤️ for retailers""",
                 {"icon": "📊", "title": "Smart Analytics", 
                  "desc": "Generate insightful business reports"},
             ],
-            "footer_text": "© 2023 Premium Billing System. All rights reserved."
+            "footer_text": "© 2025 Premium Billing System. All rights reserved."
         }
 
     @staticmethod
