@@ -1,5 +1,0 @@
-*.pdf
-.venv/
-__pycache__/
-Scripts/
-*.db
